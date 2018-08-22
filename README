@@ -1,0 +1,4 @@
+Search for pattern in input sequence of multi-line log entries.
+If any line of a log entry matches the pattern, the whole entry does.
+
+Type `./mgrep --help` for usage.

@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import argparse
+import fileinput
+import re
+import sys
+
+
+def matches(pattern, string):
+    return re.search(pattern, string) is not None
+
+
+def parse_args(argv):
+    p = argparse.ArgumentParser(
+        usage='%(prog)s [OPTION]... PATTERN [FILE]...',
+        description='Search for pattern in input sequence of multi-line log'
+        ' entries. If any line of a log entry matches the pattern, the whole'
+        ' entry does.')
+    p.add_argument('-i', '--ignore-case', action='store_true',
+                   help='ignore case distinctions')
+    p.add_argument('-v', '--invert-match', action='store_true',
+                   help='select non-matching entries')
+    s = '^2'
+    p.add_argument('--entry-begin', metavar='PATTERN', default=s,
+                   help='regexp that matches the beginning of multi-line log'
+                   ' entry; defaults to {!r}'.format(s))
+    s = '^$'
+    p.add_argument('--entry-end', metavar='PATTERN', default='^$',
+                   help='regexp that matches the end of multi-line log entry;'
+                   ' defaults to {!r}'.format(s))
+    p.add_argument('pattern', metavar='PATTERN',
+                   help='extended regular expression')
+    p.add_argument('files', metavar='FILE', nargs='*', default=['-'],
+                   help='input file; with no FILE or when FILE is -,'
+                   ' read standard input')
+    return p.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    args.entry_begin = re.compile(args.entry_begin)
+    args.pattern = re.compile(args.pattern,
+                              re.IGNORECASE if args.ignore_case else 0)
+    args.entry_end = re.compile(args.entry_end)
+    buf = ''
+    selected_p = False
+
+    def flush():
+        nonlocal buf, selected_p
+        if selected_p:
+            print(buf)
+        buf = ''
+        selected_p = args.invert_match
+
+    for line in fileinput.input(args.files):
+        # print('{}:{}:'.format(fileinput.filename(), fileinput.lineno()))
+        line = line[:-1]
+        if matches(args.entry_begin, line):
+            flush()
+        if matches(args.pattern, line):
+            selected_p = not args.invert_match
+        if matches(args.entry_end, line):
+            flush()
+        buf += ('\n' if buf else '') + line
+    flush()  # at the end of input
+
+
+if __name__ == '__main__':
+    sys.exit(main())
