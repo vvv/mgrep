@@ -3,6 +3,7 @@
 import argparse
 import fileinput
 import re
+import signal
 import sys
 
 
@@ -52,8 +53,12 @@ def main(argv=None):
         buf = ''
         selected_p = args.invert_match
 
+    # Don't show "BrokenPipeError: [Errno 32] Broken pipe"
+    # when piping output to `head`.
+    # See http://coding.derkeiler.com/Archive/Python/comp.lang.python/2004-06/3823.html
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
     for line in fileinput.input(args.files):
-        # print('{}:{}:'.format(fileinput.filename(), fileinput.lineno()))
         line = line[:-1]
         if matches(args.entry_begin, line):
             flush()
